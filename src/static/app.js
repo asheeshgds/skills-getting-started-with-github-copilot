@@ -20,11 +20,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // build participants list HTML (if any)
+        let participantsHtml = "";
+        if (details.participants && details.participants.length > 0) {
+          participantsHtml = `
+            <p><strong>Participants:</strong></p>
+            <ul class="participants-list">
+              ${details.participants
+                .map(
+                  (p) =>
+                    `<li>${p} <button class="delete-participant" data-activity="${name}" data-email="${p}" title="Unregister">&times;</button></li>`
+                )
+                .join("")}
+            </ul>
+          `;
+        } else {
+          participantsHtml = `<p><em>No participants yet</em></p>`;
+        }
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHtml}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -78,6 +97,32 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // click handler for delete buttons (event delegation)
+  activitiesList.addEventListener("click", async (ev) => {
+    if (ev.target.classList.contains("delete-participant")) {
+      const activity = ev.target.dataset.activity;
+      const email = ev.target.dataset.email;
+
+      try {
+        const resp = await fetch(
+          `/activities/${encodeURIComponent(activity)}/participants?email=${encodeURIComponent(
+            email
+          )}`,
+          { method: "DELETE" }
+        );
+        const data = await resp.json();
+        if (resp.ok) {
+          // Refresh list
+          fetchActivities();
+        } else {
+          console.error("Unregister failed:", data);
+        }
+      } catch (err) {
+        console.error("Error unregistering:", err);
+      }
     }
   });
 
